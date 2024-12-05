@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+    public function profile(Request $request)
+    {
+        return ResponseFormatter::success($request->user(), 'Successfully get profile!');
+    }
+
+
     public function personal(Request $request)
     {
         try {

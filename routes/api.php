@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\HelpController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,7 +17,16 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('/new-password', [AuthController::class, 'new_password']);
 });
 
-Route::group(['prefix' => 'user'], function () {
-    Route::post('/personal', [UserController::class, 'personal'])->middleware('auth:sanctum');
-    Route::put('/change-password', [UserController::class, 'change_password'])->middleware('auth:sanctum');
+Route::group(['middleware' =>  'auth:sanctum', 'prefix' => 'user'], function () {
+    Route::get('/', [UserController::class, 'profile']);
+    Route::post('/personal', [UserController::class, 'personal']);
+    Route::put('/change-password', [UserController::class, 'change_password']);
+});
+
+Route::group(['prefix' => 'help'], function () {
+    Route::get('/faq-category', [HelpController::class, 'category']);
+    Route::get('/faq', [HelpController::class, 'faq']);
+    Route::get('/contact', [HelpController::class, 'contact']);
+    Route::get('/privacy', [HelpController::class, 'privacy']);
+    Route::get('/abouts', [HelpController::class, 'abouts']);
 });
