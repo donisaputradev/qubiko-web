@@ -5,9 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Helpers\ResponseFormatter;
 use App\Models\User;
+use App\Otp\ResetPasswordOtp;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Kreait\Laravel\Firebase\Facades\Firebase;
+use Illuminate\Support\Str;
+use SadiqSalau\LaravelOtp\Facades\Otp;
 
 class AuthController extends Controller
 {
@@ -169,6 +174,75 @@ class AuthController extends Controller
             }
         } catch (\Throwable $th) {
             return ResponseFormatter::error(null, $th->getMessage(), 500);
+        }
+    }
+
+    public function reset_password(Request $request)
+    {
+        $request->validate(['email' => 'required|email|exists:users']);
+
+        $otp = Otp::identifier($request->email)->send(
+            new ResetPasswordOtp(email: $request->email),
+            Notification::route('mail', $request->email)
+        );
+
+        if ($otp['status'] == Otp::OTP_SENT) {
+            return ResponseFormatter::success(true, 'OTP sent successfully! Please check the email.');
+        } else {
+            return ResponseFormatter::error(false, 'OTP not sent! Please try again.');
+        }
+    }
+
+    public function resend_otp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|email|max:255',
+        ]);
+
+        $otp = Otp::identifier($request->email)->update();
+
+        if ($otp['status'] == Otp::OTP_SENT) {
+            return ResponseFormatter::success(true, 'OTP resent successfully! Please check the email.');
+        } else {
+            return ResponseFormatter::error(false, 'OTP not sent! Please try again.');
+        }
+    }
+
+    public function verify_otp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|min:6'
+        ]);
+
+        $otp = Otp::identifier($request->email)->check($request->otp);
+
+        if ($otp['status'] == Otp::OTP_MATCHED) {
+            return ResponseFormatter::success(true, 'OTP verified successfully! Please enter a new password.');
+        } else {
+            return ResponseFormatter::error(false, 'Invalid OTP code! Please try again.');
+        }
+    }
+
+    public function new_password(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string|min:6',
+            'password' => 'required|string|min:6|confirmed',
+            'password_confirmation' => 'required|string|min:6',
+        ]);
+
+        $otp = Otp::identifier($request->email)->attempt($request->otp);
+
+        if ($otp['status'] == Otp::OTP_PROCESSED) {
+            $user = User::where('email', $request->email)->first();
+
+            $user->update(['password' => bcrypt($request->password)]);
+
+            return ResponseFormatter::success(true, 'Password changed successfully! Please login to continue.');
+        } else {
+            return ResponseFormatter::error(false, 'Invalid OTP code!');
         }
     }
 }

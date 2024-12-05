@@ -29,6 +29,7 @@ class ContactResource extends Resource
                     ->required(),
                 Forms\Components\FileUpload::make('image')
                     ->image()
+                    ->directory('contact')
                     ->required(),
             ]);
     }
